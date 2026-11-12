@@ -1,0 +1,344 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Tag {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  slug      String     @unique
+  projects  Project[]
+  articles  Article[]
+  research  Research[]
+  createdAt DateTime   @default(now())
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  EDITOR
+}
+
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum EnquiryStatus {
+  NEW
+  READ
+  ARCHIVED
+}
+
+enum DocumentType {
+  REPORT
+  CERTIFICATE
+  PUBLICATION
+  PROJECT_ATTACHMENT
+  OTHER
+}
+
+model User {
+  id                  String               @id @default(cuid())
+  name                String
+  email               String               @unique
+  passwordHash        String
+  role                UserRole             @default(ADMIN)
+  authVersion         Int                  @default(0)
+  disabledAt          DateTime?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  media               Media[]
+  auditLogs           AuditLog[]
+  passwordResetTokens PasswordResetToken[]
+}
+
+model Profile {
+  id          String   @id @default("primary")
+  name        String   @default("Smile Nikoro")
+  title       String   @default("Environmental Engineer & HSE Professional")
+  email       String   @default("smileniko18@gmail.com")
+  linkedinUrl String   @default("https://www.linkedin.com/in/smile-nikoro-a660553b3/")
+  biography   String   @default("")
+  cvUrl       String?
+  updatedAt   DateTime @updatedAt
+}
+
+model ProjectCategory {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  slug      String    @unique
+  projects  Project[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Project {
+  id              String           @id @default(cuid())
+  title           String
+  slug            String           @unique
+  summary         String
+  description     String           @default("")
+  contentHtml     String           @default("")
+  projectType     String           @default("ACADEMIC")
+  objectives      String[]         @default([])
+  methodology     String           @default("")
+  findings        String           @default("")
+  recommendations String           @default("")
+  references      String[]         @default([])
+  tags            Tag[]
+  status          ContentStatus    @default(DRAFT)
+  featured        Boolean          @default(false)
+  featuredImageId String?
+  categoryId      String?
+  seoTitle        String?
+  seoDescription  String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  publishedAt     DateTime?
+  category        ProjectCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  featuredImage   Media?           @relation("ProjectFeaturedImage", fields: [featuredImageId], references: [id], onDelete: SetNull)
+  media           ProjectMedia[]
+
+  @@index([status, publishedAt])
+  @@index([categoryId, projectType])
+}
+
+model ProjectMedia {
+  projectId String
+  mediaId   String
+  sortOrder Int     @default(0)
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  media     Media   @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@id([projectId, mediaId])
+}
+
+model Article {
+  id             String        @id @default(cuid())
+  title          String
+  slug           String        @unique
+  summary        String
+  contentHtml    String        @default("")
+  category       String        @default("General")
+  tags           Tag[]
+  status         ContentStatus @default(DRAFT)
+  coverImageId   String?
+  seoTitle       String?
+  seoDescription String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  publishedAt    DateTime?
+  coverImage     Media?        @relation("ArticleCoverImage", fields: [coverImageId], references: [id], onDelete: SetNull)
+
+  @@index([status, publishedAt])
+}
+
+model Research {
+  id             String        @id @default(cuid())
+  title          String
+  slug           String        @unique
+  summary        String
+  abstract       String        @default("")
+  methodology    String        @default("")
+  findings       String        @default("")
+  references     String[]      @default([])
+  tags           Tag[]
+  status         ContentStatus @default(DRAFT)
+  seoTitle       String?
+  seoDescription String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  publishedAt    DateTime?
+
+  @@index([status, publishedAt])
+}
+
+model Publication {
+  id              String        @id @default(cuid())
+  title           String
+  authors         String[]      @default([])
+  abstract        String        @default("")
+  publicationType String        @default("OTHER")
+  journal         String?
+  publicationDate DateTime?
+  doi             String?
+  externalUrl     String?
+  pdfMediaId      String?
+  citation        String?
+  status          ContentStatus @default(DRAFT)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  pdfMedia        Media?        @relation("PublicationPdf", fields: [pdfMediaId], references: [id], onDelete: SetNull)
+
+  @@index([status, publicationDate])
+}
+
+model Experience {
+  id               String        @id @default(cuid())
+  organisation     String
+  jobTitle         String
+  employmentType   String?
+  location         String?
+  startDate        DateTime?
+  endDate          DateTime?
+  responsibilities String[]      @default([])
+  achievements     String[]      @default([])
+  description      String        @default("")
+  displayOrder     Int           @default(0)
+  status           ContentStatus @default(PUBLISHED)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+}
+
+model Education {
+  id             String        @id @default(cuid())
+  institution    String
+  qualification  String
+  programme      String
+  startDate      DateTime?
+  endDate        DateTime?
+  classification String?
+  description    String        @default("")
+  displayOrder   Int           @default(0)
+  status         ContentStatus @default(PUBLISHED)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
+
+model Certification {
+  id              String        @id @default(cuid())
+  name            String
+  issuingBody     String
+  issueDate       DateTime?
+  expiryDate      DateTime?
+  credentialRef   String?
+  description     String        @default("")
+  mediaId         String?
+  verificationUrl String?
+  displayOrder    Int           @default(0)
+  status          ContentStatus @default(PUBLISHED)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  media           Media?        @relation("CertificationFile", fields: [mediaId], references: [id], onDelete: SetNull)
+}
+
+model Media {
+  id                 String          @id @default(cuid())
+  storageKey         String          @unique
+  bucket             String
+  originalName       String
+  safeName           String
+  mimeType           String
+  sizeBytes          Int
+  width              Int?
+  height             Int?
+  altText            String          @default("")
+  caption            String          @default("")
+  isPrivate          Boolean         @default(false)
+  uploadedById       String
+  createdAt          DateTime        @default(now())
+  uploadedBy         User            @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+  featuredIn         Project[]       @relation("ProjectFeaturedImage")
+  articleCovers      Article[]       @relation("ArticleCoverImage")
+  projectLinks       ProjectMedia[]
+  publicationPdfs    Publication[]   @relation("PublicationPdf")
+  certificationFiles Certification[] @relation("CertificationFile")
+  documents          Document[]
+  cvVersions         CvVersion[]
+
+  @@index([mimeType, createdAt])
+  @@index([isPrivate, createdAt])
+}
+
+model Document {
+  id          String       @id @default(cuid())
+  title       String
+  type        DocumentType
+  description String       @default("")
+  isPublic    Boolean      @default(false)
+  mediaId     String       @unique
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  media       Media        @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+}
+
+model CvVersion {
+  id         String   @id @default(cuid())
+  label      String
+  mediaId    String   @unique
+  isCurrent  Boolean  @default(false)
+  uploadedAt DateTime @default(now())
+  media      Media    @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@index([isCurrent])
+}
+
+model ContactEnquiry {
+  id                String        @id @default(cuid())
+  name              String
+  email             String
+  subject           String
+  message           String
+  status            EnquiryStatus @default(NEW)
+  ipHash            String
+  emailSentAt       DateTime?
+  notificationError String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@index([status, createdAt])
+  @@index([ipHash, createdAt])
+}
+
+model SiteSettings {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  userId     String?
+  action     String
+  entityType String
+  entityId   String?
+  details    Json?
+  ipHash     String?
+  createdAt  DateTime @default(now())
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([entityType, entityId])
+}
+
+model LoginAttempt {
+  key         String    @id
+  failures    Int       @default(0)
+  windowStart DateTime  @default(now())
+  lockedUntil DateTime?
+  updatedAt   DateTime  @updatedAt
+}
+
+model ContactRateLimit {
+  key         String   @id
+  windowStart DateTime @default(now())
+  count       Int      @default(0)
+  updatedAt   DateTime @updatedAt
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
